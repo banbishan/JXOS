@@ -1,5 +1,5 @@
 ;/***************************************************
-;		date:2019-01-30
+;		data：2019-01-30
 ;
 ;
 ;***************************************************/
@@ -25,7 +25,7 @@ LABEL_DESC_DATA32:	dd	0x0000FFFF,0x00CF9200
 
 GdtLen	equ	$ - LABEL_GDT
 GdtPtr	dw	GdtLen - 1
-	dd	LABEL_GDT
+	dd	LABEL_GDT	;be carefull the address(after use org)!!!!!!
 
 SelectorCode32	equ	LABEL_DESC_CODE32 - LABEL_GDT
 SelectorData32	equ	LABEL_DESC_DATA32 - LABEL_GDT
@@ -77,7 +77,6 @@ Label_Start:
 
 	cli
 
-	db	0x66
 	lgdt	[GdtPtr]	
 
 	mov	eax,	cr0
@@ -177,9 +176,9 @@ Label_FileName_Found:
 	push	cx
 	add	cx,	ax
 	add	cx,	SectorBalance
-	mov	eax,	BaseTmpOfKernelAddr	;BaseOfKernelFile
+	mov	eax,	BaseTmpOfKernelAddr;BaseOfKernelFile
 	mov	es,	eax
-	mov	bx,	OffsetTmpOfKernelFile	;OffsetOfKernelFile
+	mov	bx,	OffsetTmpOfKernelFile;OffsetOfKernelFile
 	mov	ax,	cx
 
 Label_Go_On_Loading_File:
@@ -243,6 +242,7 @@ Label_Mov_Kernel:	;------------------
 	mov	dx,	RootDirSectors
 	add	ax,	dx
 	add	ax,	SectorBalance
+;	add	bx,	[BPB_BytesPerSec]	
 
 	jmp	Label_Go_On_Loading_File
 
@@ -267,7 +267,7 @@ KillMotor:
 	mov	ax,	1301h
 	mov	bx,	000Fh
 	mov	dx,	0400h		;row 4
-	mov	cx,	24
+	mov	cx,	44
 	push	ax
 	mov	ax,	ds
 	mov	es,	ax
@@ -288,12 +288,15 @@ Label_Get_Mem_Struct:
 	int	15h
 	jc	Label_Get_Mem_Fail
 	add	di,	20
+	inc	dword	[MemStructNumber]
 
 	cmp	ebx,	0
 	jne	Label_Get_Mem_Struct
 	jmp	Label_Get_Mem_OK
 
 Label_Get_Mem_Fail:
+
+	mov	dword	[MemStructNumber],	0
 
 	mov	ax,	1301h
 	mov	bx,	008Ch
@@ -305,7 +308,6 @@ Label_Get_Mem_Fail:
 	pop	ax
 	mov	bp,	GetMemStructErrMessage
 	int	10h
-	jmp	$
 
 Label_Get_Mem_OK:
 	
@@ -423,6 +425,7 @@ Label_SVGA_Mode_Info_Get:
 
 	jnz	Label_SVGA_Mode_Info_FAIL	
 
+	inc	dword		[SVGAModeCounter]
 	add	esi,	2
 	add	edi,	0x100
 
@@ -471,10 +474,8 @@ Label_SVGA_Mode_Info_Finish:
 
 	cli			;======close interrupt
 
-	db	0x66
 	lgdt	[GdtPtr]
 
-;	db	0x66
 ;	lidt	[IDT_POINTER]
 
 	mov	eax,	cr0
@@ -496,7 +497,7 @@ GO_TO_TMP_Protect:
 	mov	fs,	ax
 	mov	ss,	ax
 	mov	esp,	7E00h
-
+	
 	call	support_long_mode
 	test	eax,	eax
 
@@ -520,10 +521,9 @@ GO_TO_TMP_Protect:
 	mov	dword	[0x92020],	0x800083
 
 	mov	dword	[0x92028],	0xa00083
-
+	
 ;=======	load GDTR
-
-	db	0x66
+	
 	lgdt	[GdtPtr64]
 	mov	ax,	0x10
 	mov	ds,	ax
@@ -533,7 +533,7 @@ GO_TO_TMP_Protect:
 	mov	ss,	ax
 
 	mov	esp,	7E00h
-
+	
 ;=======	open PAE
 
 	mov	eax,	cr4
@@ -587,7 +587,7 @@ no_support:
 
 ;=======	read one sector from floppy
 
-[SECTION .s16lib]
+[SECTION .s116]
 [BITS 16]
 
 Func_ReadOneSector:
@@ -717,6 +717,10 @@ SectorNo		dw	0
 Odd			db	0
 OffsetOfKernelFileCount	dd	OffsetOfKernelFile
 
+MemStructNumber		dd	0
+
+SVGAModeCounter		dd	0
+
 DisplayPosition		dd	0
 
 ;=======	display messages
@@ -724,7 +728,7 @@ DisplayPosition		dd	0
 StartLoaderMessage:	db	"Start Loader"
 NoLoaderMessage:	db	"ERROR:No KERNEL Found"
 KernelFileName:		db	"KERNEL  BIN",0
-StartGetMemStructMessage:	db	"Start Get Memory Struct."
+StartGetMemStructMessage:	db	"Start Get Memory Struct (address,size,type)."
 GetMemStructErrMessage:	db	"Get Memory Struct ERROR"
 GetMemStructOKMessage:	db	"Get Memory Struct SUCCESSFUL!"
 
@@ -735,3 +739,7 @@ GetSVGAVBEInfoOKMessage:	db	"Get SVGA VBE Info SUCCESSFUL!"
 StartGetSVGAModeInfoMessage:	db	"Start Get SVGA Mode Info"
 GetSVGAModeInfoErrMessage:	db	"Get SVGA Mode Info ERROR"
 GetSVGAModeInfoOKMessage:	db	"Get SVGA Mode Info SUCCESSFUL!"
+
+
+
+

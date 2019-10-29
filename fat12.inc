@@ -1,3 +1,8 @@
+;/***************************************************
+;		data：2019-01-30
+;
+;***************************************************/
+
 RootDirSectors	equ	14
 SectorNumOfRootDirStart	equ	19
 SectorNumOfFAT1Start	equ	1
